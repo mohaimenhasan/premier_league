@@ -1,3 +1,16 @@
+"""
+*******DISCLAIMER THIS IS A FUN TOOL TO USE. NOT MEANT TO BE TAKEN SERIOUSLY*****************
+Based on Matchday week 13. It predicted 6/7 games correctly. 
+
+This Python script defines a FastAPI web application that retrieves and compares football (soccer) statistics for Premier League clubs.
+The application scrapes data from "https://fbref.com" using BeautifulSoup, providing endpoints to fetch club-specific data, compare statistics between two clubs, and predict a winner based on various performance metrics.
+The script includes functions for data retrieval, club name standardization, and score calculation, ultimately offering JSON responses with relevant football statistics and match predictions.
+The application uses the FastAPI framework for building the API and integrates external libraries such as requests and BeautifulSoup for web scraping.
+
+Requirements: FASTAPI, beautifulsoup4, uvicorn
+"""
+
+
 import requests
 from fastapi import FastAPI
 from bs4 import BeautifulSoup
@@ -73,7 +86,7 @@ async def get_club_data(club = ""):
     club = club.title()
     if club == "ManCity" or club == "City" or club == "ManchesterCity" or club ==  "Manchestercity":
         club = "Manchester City"
-    if club == "ManUnited" or club == "ManUTD" or club == "ManchesterUnited" or club == "Manchesterunited" or club == "ManchesterUTD" or club == "Manunited" or club == "Man utd" or club == "Manchester utd":
+    if club == "ManUnited" or club == "ManUTD" or club == "ManchesterUnited" or club == "Manchesterunited" or club == "ManchesterUTD" or club == "Manunited" or club == "Man utd" or club == "Manchester utd" or club == "Man United":
         club = "Manchester Utd"
     if club == "Villa" or club == "AstonVilla" or club == "Astonvilla" or club ==  "Aston":
         club = "Aston Villa"
@@ -89,12 +102,10 @@ async def get_club_data(club = ""):
         club = "Sheffield Utd"
     if club == "WestHam" or club == "West ham" or club == "Ham" or club == "West":
         club = "West Ham"
-    
         
     x = get_definition()
     y = get_defence()
     z = get_possesion()
-
     hold = []
 
     for i, j, z in zip(x["table_data"], y["table_data"], z["table_data"]):
@@ -115,6 +126,17 @@ async def get_club_data(club = ""):
                 "Shots Against": j[8]
             }
             hold.append(data_entry)
+    if len(hold) == 0:
+        return {
+            "please_check_spelling": (
+            "Please check the spelling or try a different spelling from the following list: "),
+        "club_list": [
+            "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton",
+            "Burnley", "Chelsea", "Crystal Palace", "Everton", "Fulham", "Liverpool",
+            "Luton Town", "Manchester City", "Manchester Utd", "Newcastle Utd",
+            "Nottingham Forest", "Sheffield Utd", "Tottenham", "West Ham", "Wolves"
+            ]
+        }
 
     return hold
 
@@ -130,8 +152,20 @@ async def compare_two_club(club1="", club2=""):
 @app.get("/fpl_who_will_win")
 async def who_will_win(club1="", club2=""):
     a = await compare_two_club(club1, club2)
+
     score_club1 = 0
     score_club2 = 0
+    if "please_check_spelling" in (a["club1"]) or "please_check_spelling" in (a["club2"]):
+        return {
+            "please_check_spelling": (
+            "Please check the spelling or try a different spelling from the following list: "),
+        "club_list": [
+            "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton",
+            "Burnley", "Chelsea", "Crystal Palace", "Everton", "Fulham", "Liverpool",
+            "Luton Town", "Manchester City", "Manchester Utd", "Newcastle Utd",
+            "Nottingham Forest", "Sheffield Utd", "Tottenham", "West Ham", "Wolves"
+            ]
+        }
     for i, j in zip(a["club1"], a["club2"]):
 
         clubA = i["Team"]
@@ -199,11 +233,23 @@ async def who_will_win(club1="", club2=""):
         elif score_club2 > score_club1:
             winner = clubB
         else:
-            return "It will end in draw"
-
+            return {"we can't determine a winner the scores are too close. It will be a tie"}
+        
     result = {
         "club1": {"name": clubA, "score": score_club1},
-        "club2": {"name": clubB, "score": score_club2},
-        "Based on our statistics the winner of the game will be": winner
+        "club2": {"name": clubB, "score": score_club2}
     }
-    return result
+
+    if abs(score_club1 - score_club2) < 3:
+        prediction = {
+            "It will be a close game. We would not recommend choosing a team as a guaranteed winner."
+        }
+    elif 3 < abs(score_club1 - score_club2) < 6:
+        prediction = {
+            f"Based on our algorithm, the club that will win is: {winner}. However, it can still be a close game. Be careful about how much you are risking on the winner of the game."
+        }
+    else:
+        prediction = {
+            f"Based on our algorithm, the club that will win is: {winner}. This is a safer team to choose as the winner of the game."
+        }
+    return prediction, result
